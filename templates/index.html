@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Visualization</title>
+
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.113/Build/Cesium/Cesium.js"></script>
+    <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.113/Build/Cesium/Widgets/widgets.css">
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+        }
+        #cesiumContainer {
+            height: 100%;
+        }
+        #legend {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="cesiumContainer"></div>
+<div id="legend">
+    <strong>Legend</strong><br>
+    <img src="./static/fire.png" alt="Wildfires" width="20" height="20"> Wildfires<br>
+    <img src="./static/ice.png" alt="Sea and Lake Ice" width="20" height="20"> Sea and Lake Ice<br>
+    <img src="./static/storm.png" alt="Severe Storms" width="20" height="20"> Severe Storms<br>
+    <img src="./static/volcano.png" alt="Volcanoes" width="20" height="20"> Volcanoes<br>
+    <img src="./static/drought.png" alt="Drought" width="20" height="20"> Drought<br>
+    <img src="./static/flood.png" alt="Flood" width="20" height="20"> Flood<br>
+    <img src="./static/earthquake.png" alt="Earthquake" width="20" height="20"> Earthquake<br>
+    <p>Zoom for more info!</p>
+</div>
+<script>
+    Cesium.Ion.defaultAccessToken = 'YOUR_ACCESS_TOKEN' // DONT ACTUALLY PUT IT HERE I NEVER SET THIS UP FOR PUBLIC DEPLOYMENT
+
+    var viewer = new Cesium.Viewer('cesiumContainer',
+        {
+            animation: false,
+            baseLayerPicker: false,
+            fullscreenButton: false,
+            geocoder: false,
+            homeButton: false,
+            infoBox: false,
+            sceneModePicker: false,
+            selectionIndicator: false,
+            timeline: false,
+            //navigationHelpButton: false,
+            navigationInstructionsInitiallyVisible: false,
+            scene3DOnly: true, // Set to true to disable 2D view
+            shouldAnimate: true, // Enable or disable animations
+
+        });
+    viewer.cesiumWidget.creditContainer.style.display = 'none';
+
+    function fetchData() {
+        fetch('/api/categorize')
+            .then(response => response.json())
+            .then(data => {
+
+                // Check if data and data.events are defined
+                var label;
+                if (data && data.events) {
+                    var events = data.events;
+                    viewer.entities.removeAll();
+                    for (var i = 0; i < events.length; i++) {
+                        const event = events[i];
+                        const coordinates = event.geometry[0].coordinates;
+                        const category = event.categories[0].title;
+
+                        const categoryToImage = {
+                            "Wildfires": "./static/fire.png",
+                            "Sea and Lake Ice": "./static/ice.png",
+                            "Severe Storms": "./static/storm.png",
+                            "Volcanoes": "./static/volcano.png",
+                            "Drought": "./static/drought.png",
+                            "Flood": "./static/flood.png",
+                            "Earthquake": "./static/earthquake.png",
+                        };
+
+                        const image = categoryToImage[category] || "./static/point.png";
+
+                        var label = viewer.entities.add({
+                            position: Cesium.Cartesian3.fromDegrees(coordinates[0], coordinates[1]),
+                            label: {
+                                text: event.title,
+                                verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                                show: true,
+                                font: "20px sans-serif",
+                                distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 2500000),
+
+                            },
+                        });
+
+                        viewer.entities.add({
+                            position: Cesium.Cartesian3.fromDegrees(coordinates[0], coordinates[1]),
+                            billboard: {
+                                image: image,
+                                show: true,
+                                width: 20,
+                                height: 20,
+                            },
+                        });
+                    }
+                } else {
+                    console.error('Invalid data structure:', data);
+                }
+            })
+            .catch(error => console.error('Error fetching events:', error));
+    }
+    fetchData()
+    setInterval(fetchData, 15000);
+</script>
+</body>
+</html>
